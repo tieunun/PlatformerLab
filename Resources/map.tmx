@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.0" orientation="orthogonal" width="21" height="21" tilewidth="16" tileheight="16">
+ <tileset firstgid="1" name="tileset" tilewidth="16" tileheight="16">
+  <image source="tileset.png" width="96" height="208"/>
+ </tileset>
+ <tileset firstgid="79" name="Meta" tilewidth="16" tileheight="16">
+  <properties>
+   <property name="isCollidable" value="false"/>
+  </properties>
+  <image source="meta.png" width="128" height="32"/>
+  <tile id="0">
+   <properties>
+    <property name="isCollidable" value="true"/>
+   </properties>
+  </tile>
+  <tile id="1">
+   <properties>
+    <property name="isCollidable" value="false"/>
+   </properties>
+  </tile>
+ </tileset>
+ <layer name="Level" width="21" height="21">
+  <data encoding="base64" compression="zlib">
+   eJzzYKAucANij1EzR4SZLEDMCsRsVDSTC4jtgJiHCmaqQ2kBIJYFYiEKzOSH0mpQWgyIlYFYgkwz2YGYA4gdgNgRC3Yn050MUPe448DIZjIjsRkpNBPmH2yYk0J3kgKoYSbMLzB3DzZ38tLATHQ/k2ImLvegAz4izFSgAQYA1FcgMw==
+  </data>
+ </layer>
+ <layer name="Meta" width="21" height="21">
+  <data encoding="base64" compression="zlib">
+   eJzzZ6Au8IfiUTNHzRw1EzcIgGJ/ApgS99DTzAACeLC4kxiA7u7B6k5qmokrrgbCndTGAIYtKlg=
+  </data>
+ </layer>
+</map>
