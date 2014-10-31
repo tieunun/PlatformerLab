@@ -56,6 +56,8 @@ public:
     float getMass();
     void setMass(float mass);
 
+    void setVelocity(const Vec2& velocity);
+
     TMXTiledMap* getTileMap();
     void setTileMap(TMXTiledMap* tilemap);
 
@@ -80,7 +82,9 @@ public:
 
     const Vec2& toTileCoord(const Vec2& point);
 
-
+    void moveLeft();
+    void moveRight();
+    void stop();
 };
 
 

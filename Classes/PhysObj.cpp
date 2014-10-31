@@ -176,7 +176,7 @@ void PhysObj::applyForce(Vec2 force)
 {
     if(_mass > 0)
     {
-        Vec2 rforce = force / _mass;
+        Vec2 rforce = Vec2(force.x / _mass, force.y / _mass);
         _acceleration += rforce;
     }
 }
@@ -246,11 +246,18 @@ const Vec2& PhysObj::tileCollision(const Vec2& position)
                 }
                 if(diff.x < 0) // moved left
                 {
-                    //float tx = tilePos.x;
-                    //ret = Vec2(
-                    //    (tx + 1) * TILE_SIZE + ( _aaBoundingBox.size.width * TILE_SIZE ) + _aaOffset.x,
-                    //    ret.y
-                    //    );
+                    auto tile = _metaLayer->getTileAt(tilePos);
+
+                    // TODO: Collision
+                    //if(preBB.intersectsRect(tile->getBoundingBox()))
+                    //{
+                    //    
+                    //    ret = Vec2(
+                    //        tile->getBoundingBox().getMinX()
+                    //        + _collider.size.width * 0.5f,
+                    //        ret.y
+                    //        );
+                    //}
                 }
                 if(diff.y > 0) // moved up
                 {
@@ -261,18 +268,24 @@ const Vec2& PhysObj::tileCollision(const Vec2& position)
                     // As suggested, i need to test the topmost intersection
                     // the AA bounding box has with the tile.
                     auto tile = _metaLayer->getTileAt(tilePos);
+/*
+                    float tileY = tile->getBoundingBox().getMaxY();
+                    float minY = preBB.origin.y;
 
-                    if(preBB.intersectsRect(tile->getBoundingBox()))
-                    {
-                        ret = Vec2(
-                            ret.x,
-                            tile->getBoundingBox().getMaxY()
-                            + _collider.size.height * 0.5f
-                            );
-                        _airborn = false;
-                        _velocity = Vec2(_velocity.x, 0);
-                    }
-
+                    if(minY < tileY)
+*/
+                    // TODO: Collision
+                    //if(preBB.intersectsRect(tile->getBoundingBox()))
+                    //{
+                    //    
+                    //    ret = Vec2(
+                    //        ret.x,
+                    //        tile->getBoundingBox().getMaxY()
+                    //        + _collider.size.height * 0.5f
+                    //        );
+                    //    _airborn = false; // grounded
+                    //    _velocity = Vec2(_velocity.x, 0);
+                    //}
                 }
             }
         }
@@ -331,3 +344,8 @@ const Vec2& PhysObj::toTileCoord(const Vec2& point)
     return Vec2(x, y);
 }
 
+void PhysObj::moveLeft() { _velocity.x = -2.f; }
+void PhysObj::moveRight() { _velocity.x = 2.f; }
+void PhysObj::stop() { _velocity.x = 0.f; }
+
+void PhysObj::setVelocity(const Vec2& velocity) { _velocity = velocity; }

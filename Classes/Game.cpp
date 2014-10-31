@@ -53,7 +53,7 @@ bool Game::init()
 
     player->setTileMap(map);
 
-
+    player->setVelocity(Vec2(-1.f,0.f));
     gameLayer->addChild(player);
 
     // Keyboard bindings
@@ -83,16 +83,16 @@ void Game::onKeyPressed(EventKeyboard::KeyCode keyCode, Event* event)
 
     if(keyCode == EventKeyboard::KeyCode::KEY_LEFT_ARROW)
     {
-        player->applyForce(Vec2(-1.f, 0.f));
+        player->moveLeft();
     }
     
     if(keyCode == EventKeyboard::KeyCode::KEY_RIGHT_ARROW)
     {
-        player->applyForce(Vec2(1.f, 0.f));
+        player->moveRight();
     }
 }
 
 void Game::onKeyReleased(EventKeyboard::KeyCode keyCode, Event* event)
 {
-
+    player->stop();
 }
