@@ -49,8 +49,7 @@ bool Game::init()
     player = PhysObj::create("sprite.png");
     player->setPosition(60, 75);
 
-    player->setAABoundingBox(Rect(0,0,1,1));
-    player->setAAOffset(Vec2(8,0));
+    player->setCollider(Rect(8,0,16,16));
 
     player->setTileMap(map);
 

@@ -8,7 +8,8 @@ PhysObj::PhysObj()
     : _mass(10.f),
     _acceleration(Vec2(0,0)),
     _velocity(Vec2(0,0)),
-    _aaBoundingBox(Rect(0,0,0,0))
+    _collider(Rect(0,0,16,16)),
+    _tileSize(16.f)
 { }
     
 PhysObj* PhysObj::create(const std::string& filename)
@@ -43,21 +44,49 @@ void PhysObj::setTileMap(TMXTiledMap* tilemap)
 { 
     _tileMap = tilemap; 
     _metaLayer = tilemap->getLayer("Meta");
+    _tileSize = tilemap->getTileSize().width;
 }
 
 bool PhysObj::isGrounded() { return !_airborn; }
 bool PhysObj::isAirborn() { return _airborn; }
 
-const Rect& PhysObj::getAABoundingBox() { return _aaBoundingBox; }
-void PhysObj::setAABoundingBox(const Rect& bb) { _aaBoundingBox = bb; }
+const Rect& PhysObj::getCollider() { return _collider; }
+void PhysObj::setCollider(const Rect& bb) { _collider = bb; }
 
-const Vec2& PhysObj::getAAOffset() { return _aaOffset; }
-void PhysObj::setAAOffset(const Vec2& offset) { _aaOffset = offset; }
+/* gets the collider's center point based on the sprite's anchor point */
+const Vec2& PhysObj::getColliderPosition()
+{
+    return Vec2(
+        boundingBox().origin.x + _collider.origin.x + (_collider.size.width * 0.5f),
+        boundingBox().origin.y + _collider.origin.y + (_collider.size.height * 0.5f)
+        );
+}
 
+/* sets the collider's position and the sprite as well */
+void PhysObj::setColliderPosition(const Vec2& position)
+{
+    float bbWidth = boundingBox().size.width;
+    float bbHeight = boundingBox().size.height;
 
-// Debug assistance
+    Vec2 bbOffset = Vec2(bbWidth * 0.5f, bbHeight * 0.5f);
+    Vec2 cOffset = Vec2(_collider.size.width * 0.5f, _collider.size.height * 0.5f);
+    
+    Vec2 offset = Vec2(
+        this->getPositionX() - (bbWidth * this->getAnchorPoint().x),
+        this->getPositionY() - (bbHeight * this->getAnchorPoint().y)
+        );
+    this->setPosition(
+        position.x + (bbOffset.x - _collider.origin.x - cOffset.x),
+        position.y + (bbOffset.y - _collider.origin.y - cOffset.y)
+        );
+    //this->setPosition( // the below should work.
+    //    position.x - (offset.x - (_collider.origin.x + _collider.size.height * 0.5f)),
+    //    position.y - (offset.y - (_collider.origin.y + _collider.size.height * 0.5f))
+    //    );
+}
+
+// Draw events (for debugging)
 //-------------------------------------------------------------------------
-
 void PhysObj::draw(Renderer *renderer, const Mat4 &transform, uint32_t flags)
 {
     Sprite::draw(renderer, transform, flags);
@@ -78,12 +107,12 @@ void PhysObj::onDraw(const Mat4 &transform)
     // Draw axis-aligned bounding box.
         
     Color4F color = Color4F(0,0, 0.5, 0.5);
-    Rect& aabb = this->_aaBoundingBox;
+    Rect& aabb = this->_collider;
     Rect& bb = this->boundingBox();
     DrawPrimitives::drawSolidRect(
-        aabb.origin + _aaOffset,
-        Vec2(aabb.size.width * TILE_SIZE, aabb.size.height * TILE_SIZE)
-        + _aaOffset,
+        aabb.origin,
+        Vec2(aabb.size.width, aabb.size.height)
+        + aabb.origin,
         color
         );
 
@@ -119,13 +148,17 @@ void PhysObj::step()
     if(abs(vy) > MAX_VELOCITY) _velocity.y = (vy / abs(vy)) * MAX_VELOCITY;
     
     // Predicted Position
-    Vec2 position = this->getPosition() + _velocity;
+    Vec2 colliderPos = this->getColliderPosition();
+    Vec2 position = Vec2(
+        colliderPos.x + _velocity.x,
+        colliderPos.y + _velocity.y
+        );
 
     // Tile collision
     position = this->tileCollision(position);
 
     // Conclude Position
-    this->setPosition(position);
+    this->setColliderPosition(position);
 }
     
     
@@ -153,8 +186,8 @@ void PhysObj::applyForce(Vec2 force)
 const Vec2& PhysObj::tileCollision(const Vec2& position)
 {
     Vec2 ret = Vec2(position); // predicted position
-    Vec2 curPos = this->getPosition(); // Current position
-    Vec2 prePos = position; // Predicted position
+    Vec2 curPos = this->getColliderPosition(); // Current position
+    Vec2 prePos = Vec2(position); // Predicted position
     Rect bb = this->boundingBox();
 
     Vec2 diff = prePos - curPos; // Difference in position (x and y)
@@ -164,42 +197,40 @@ const Vec2& PhysObj::tileCollision(const Vec2& position)
     if(diff.x == 0 && diff.y == 0)
         return ret; // skip everything if no difference in movement.
 
-    Rect curBB = Rect(
-        _aaBoundingBox.origin.x + bb.origin.x + _aaOffset.x,
-        _aaBoundingBox.origin.y + bb.origin.y + _aaOffset.y,
-        _aaBoundingBox.size.width * TILE_SIZE,
-        _aaBoundingBox.size.height * TILE_SIZE
+    Rect curBB = Rect( // current position bounding box
+        _collider.origin.x + bb.origin.x + _collider.origin.x,
+        _collider.origin.y + bb.origin.y + _collider.origin.y,
+        _collider.size.width,
+        _collider.size.height
         );
-    Rect preBB = Rect(
+    Rect preBB = Rect( // predicted position bounding box
         curBB.origin.x + diff.x,
         curBB.origin.y + diff.y,
         curBB.size.width,
         curBB.size.height
         );
 
-    // step 1: get rect area of tiles.
-    Vec2 start = Vec2(
-        std::min(curBB.getMinX(), preBB.getMinX()) / TILE_SIZE,
-        std::min(curBB.getMinY(), preBB.getMinY()) / TILE_SIZE
-        );
-    Vec2 finish = Vec2(
-        std::max(curBB.getMaxX(), preBB.getMaxX()) / TILE_SIZE,
-        std::max(curBB.getMaxY(), preBB.getMaxY()) / TILE_SIZE
-        );
+    // bottom left
+    float x0 = std::min(curBB.getMinX(), preBB.getMinX());
+    float y0 = std::min(curBB.getMinY(), preBB.getMinY());
 
-    
+    // top right
+    float x1 = std::max(curBB.getMaxX(), preBB.getMaxX());
+    float y1 = std::max(curBB.getMaxY(), preBB.getMaxY());
+
+    // step 1: get rect area of tiles.
+    Vec2 start = toTileCoord(Vec2(x0,y0));
+    Vec2 finish = toTileCoord(Vec2(x1,y1));
+
     // loop through each column.
-    for(float y = start.y; y < finish.y; y++)
+    for(float y = start.y; y >= finish.y; y--)
     {
         // loop through each row.
-        for(float x = start.x; x < finish.x; x++)
+        for(float x = start.x; x <= finish.x; x++)
         {
-            Vec2 tilePos = tileCoord(Vec2(x,y));
+            Vec2 tilePos = Vec2(x,y);
             CCLOG("Testing tile pos [%f, %f]...", tilePos.x, tilePos.y);
-            if(tilePos.y < 21 && tilePos.y > 20)
-                CCLOG("gotcha");
 
-            
             if( isCollidable( tilePos ) )
             {
                 
@@ -227,14 +258,21 @@ const Vec2& PhysObj::tileCollision(const Vec2& position)
                 }
                 if(diff.y < 0) // moved down
                 {
-                    // The below will not work.
-                    // looks like i'll have to test intersections here.
-                    float ty = std::ceil(_tileMap->getMapSize().height - tilePos.y);
-                    ret = Vec2( // this won't work because the aabb size is different from the sprite.
-                        ret.x,
-                        (ty * TILE_SIZE) + ( _aaBoundingBox.size.height * TILE_SIZE)
-                        );
-                    _velocity.y = 0;
+                    // As suggested, i need to test the topmost intersection
+                    // the AA bounding box has with the tile.
+                    auto tile = _metaLayer->getTileAt(tilePos);
+
+                    if(preBB.intersectsRect(tile->getBoundingBox()))
+                    {
+                        ret = Vec2(
+                            ret.x,
+                            tile->getBoundingBox().getMaxY()
+                            + _collider.size.height * 0.5f
+                            );
+                        _airborn = false;
+                        _velocity = Vec2(_velocity.x, 0);
+                    }
+
                 }
             }
         }
@@ -264,34 +302,32 @@ bool PhysObj::isCollidable(uint32_t gid)
     return false;
 }
 
-bool PhysObj::isCollidable(const Vec2& position)
+/* Determines of a tile (position) is collidable or not. */
+bool PhysObj::isCollidable(const Vec2& coord)
 {
-    Vec2 corrected = Vec2(
-        std::floor(position.x), std::floor(position.y));
-    return isCollidable(_tileMap->getLayer("Meta")->getTileGIDAt(corrected));
-}
-    
-/* Gets a tile based on literal position */
-const Vec2& PhysObj::posToTileCoord(const Vec2& position)
-{
-    float tileSize = _tileMap->getTileSize().height; // width and height should be the same.
-        
-    int x = position.x / tileSize;
-    int y = ((_tileMap->getMapSize().height * tileSize) - position.y)
-        / tileSize;
-    return Vec2(x, y);
+    //Vec2 corrected = Vec2(std::floor(position.x), std::floor(position.y));
+    return isCollidable(_metaLayer->getTileGIDAt(coord));
 }
 
 // gets tile coordinate within map
-const Vec2& PhysObj::tileCoord(const Vec2& position)
+const Vec2& PhysObj::mapCoord(const Vec2& coord)
 {
-    Vec2 corrected = Vec2(
-        std::floor(position.x),
-        std::floor(_tileMap->getMapSize().height - position.y)
+    Vec2 corrected = Vec2(coord.x,
+        _tileMap->getMapSize().height - coord.y
         );
-    return Vec2(
-        std::max(std::min(corrected.x, _tileMap->getMapSize().width - 0.1f), 0.f),
-        std::max(std::min(corrected.y, _tileMap->getMapSize().height - 0.1f), 0.f)
+    return Vec2( // the -0.01f is to ensure it stays within the map.
+        std::max(std::min(corrected.x, _tileMap->getMapSize().width), 0.f),
+        std::max(std::min(corrected.y, _tileMap->getMapSize().height), 0.f)
         );
+    
+}
+
+// converts a point to a tile coordinate.
+const Vec2& PhysObj::toTileCoord(const Vec2& point)
+{
+    int x = point.x / _tileSize;
+    int y = ((_tileMap->getMapSize().height * _tileSize) - point.y) / _tileSize;
+
+    return Vec2(x, y);
 }
 

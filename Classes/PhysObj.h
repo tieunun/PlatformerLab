@@ -2,10 +2,18 @@
 #define _PLATFORMERLAB_PHYSOBJ_H_
 /**
  * PhysObj.h
+ *
+ * This is a self-contained physics object designed for platformer tile-based
+ * physics.
+ *
+ * Notes:
+ *
+ * - The *HitBox* of the PhysObj is actually the collidable area measured in
+ * points.  By default, the hitbox is 16x16 in size and starts from the bottom
+ * left of the sprite's bounding box.  The /origin/ attribute would represent
+ * the hitbox's offset.
  */ 
 #include "cocos2d.h"
-
-// Tags
 
 USING_NS_CC;
 
@@ -13,23 +21,24 @@ class PhysObj : public Sprite
 {
 private:
     // Members
-    Vec2 _velocity;
-    Vec2 _acceleration;
-    float _mass;
+    //-------------------------------------------------------------------------
+    Vec2 _velocity;         // The speed the object moves.
+    Vec2 _acceleration;     // The accelleration on the object.
+    float _mass;            // The mass of the object.
 
-    TMXTiledMap* _tileMap;
-    TMXLayer* _metaLayer;
-    Rect _aaBoundingBox;
+    TMXTiledMap* _tileMap;  // The tilemap that the object adheres to.
+    TMXLayer* _metaLayer;   // The relevant meta layer of the tilemap.
+    float _tileSize;        // The size of tiles in the tilemap.
+
+    Rect _collider;           // The physics object's hit box.
     
-    Vec2 _aaOffset;
-
     bool _airborn;
 
     // Private methods
     const Vec2& tileCollision(const Vec2& position);
-    const Vec2& posToTileCoord(const Vec2& position);
+    //const Vec2& posToTileCoord(const Vec2& position);
     bool isCollidable(uint32_t gid);
-    bool isCollidable(const Vec2& position);
+    bool isCollidable(const Vec2& coord);
     
     void onDraw(const Mat4 &transform);
     CustomCommand _cmd;
@@ -50,11 +59,11 @@ public:
     TMXTiledMap* getTileMap();
     void setTileMap(TMXTiledMap* tilemap);
 
-    const Rect& getAABoundingBox();
-    void setAABoundingBox(const Rect& bb);
+    const Rect& getCollider();
+    void setCollider(const Rect& bb);
 
-    const Vec2& getAAOffset();
-    void setAAOffset(const Vec2& offset);
+    const Vec2& getColliderPosition();
+    void setColliderPosition(const Vec2& position);
 
     bool isGrounded();  // object is grounded.
     bool isAirborn();   // object is airborn.
@@ -67,7 +76,11 @@ public:
 
     void applyForce(Vec2 force);
 
-    const Vec2& tileCoord(const Vec2& position);
+    const Vec2& mapCoord(const Vec2& coord);
+
+    const Vec2& toTileCoord(const Vec2& point);
+
+
 };
 
 
