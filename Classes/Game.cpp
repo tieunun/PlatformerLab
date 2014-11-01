@@ -53,7 +53,7 @@ bool Game::init()
 
     player->setTileMap(map);
 
-    player->setVelocity(Vec2(-1.f,0.f));
+    //player->setVelocity(Vec2(-1.f,0.f));
     gameLayer->addChild(player);
 
     // Keyboard bindings
@@ -75,11 +75,10 @@ void Game::update(float dt)
 
 void Game::onKeyPressed(EventKeyboard::KeyCode keyCode, Event* event)
 {
-    //if(!_jump && keyCode == EventKeyboard::KeyCode::KEY_UP_ARROW) 
-    //{
-    //    _jump = true;
-    //    player->applyForce(Vec2(0, 20.f));
-    //}
+    if(!_jump && keyCode == EventKeyboard::KeyCode::KEY_UP_ARROW) 
+    {
+        player->jump();
+    }
 
     if(keyCode == EventKeyboard::KeyCode::KEY_LEFT_ARROW)
     {

@@ -147,6 +147,12 @@ void PhysObj::step()
     if(abs(vx) > MAX_VELOCITY) _velocity.x = (vx / abs(vx)) * MAX_VELOCITY;
     if(abs(vy) > MAX_VELOCITY) _velocity.y = (vy / abs(vy)) * MAX_VELOCITY;
     
+    if(!_airborn && vy < 0)
+    {
+        _velocity.y = 0;
+        _acceleration.y = 0;
+    }
+
     // Predicted Position
     Vec2 colliderPos = this->getColliderPosition();
     Vec2 position = Vec2(
@@ -190,6 +196,8 @@ const Vec2& PhysObj::tileCollision(const Vec2& position)
     Vec2 prePos = Vec2(position); // Predicted position
     Rect bb = this->boundingBox();
 
+    float shortDist = curPos.getDistance(prePos);
+
     Vec2 diff = prePos - curPos; // Difference in position (x and y)
     // in this case, since i'm subtracting current position from predicted
     // position, it should be relatively correct
@@ -230,62 +238,99 @@ const Vec2& PhysObj::tileCollision(const Vec2& position)
         {
             Vec2 tilePos = Vec2(x,y);
             CCLOG("Testing tile pos [%f, %f]...", tilePos.x, tilePos.y);
-
+            
             if( isCollidable( tilePos ) )
             {
                 
+                // get the tile collided
+                auto tile = _metaLayer->getTileAt(tilePos);
+                Rect tileBB = tile->getBoundingBox();
+
                 // directional tests
                 if(diff.x > 0) // moved right
                 {
+                    // get the left of the tile edge.
                     
-                    //float tx = tilePos.x;
-                    //ret = Vec2(
-                    //    tx * TILE_SIZE + ( _aaBoundingBox.size.width * TILE_SIZE ) + _aaOffset.x,
-                    //    ret.y
-                    //    );
+                    Vec2 tileTL = Vec2(
+                        tileBB.getMinX() - _collider.size.width * 0.5f,
+                        tileBB.getMaxY() + _collider.size.height * 0.5f
+                        );
+                    Vec2 tileBL = Vec2(
+                        tileBB.getMinX() - _collider.size.width * 0.5f,
+                        tileBB.getMinY() - _collider.size.height * 0.5f
+                        );
+                    
+                    Vec2 intersect = Vec2::getIntersectPoint(
+                        curPos, prePos, tileTL, tileBL);
+
+                    float dist = curPos.distance(intersect);
+
+                    if(dist < shortDist)
+                    {
+                        ret = Vec2(intersect);
+                        shortDist = dist;
+                    }
                 }
                 if(diff.x < 0) // moved left
                 {
-                    auto tile = _metaLayer->getTileAt(tilePos);
+                    // get the right of the tile edge.
+                    
+                    Vec2 tileTR = Vec2(
+                        tileBB.getMaxX() + _collider.size.width * 0.5f,
+                        tileBB.getMaxY() + _collider.size.height * 0.5f
+                        );
+                    Vec2 tileBR = Vec2(
+                        tileBB.getMaxX() + _collider.size.width * 0.5f,
+                        tileBB.getMinY() - _collider.size.height * 0.5f
+                        );
+                    
+                    Vec2 intersect = Vec2::getIntersectPoint(
+                        curPos, prePos, tileTR, tileBR);
 
-                    // TODO: Collision
-                    //if(preBB.intersectsRect(tile->getBoundingBox()))
-                    //{
-                    //    
-                    //    ret = Vec2(
-                    //        tile->getBoundingBox().getMinX()
-                    //        + _collider.size.width * 0.5f,
-                    //        ret.y
-                    //        );
-                    //}
+                    float dist = curPos.distance(intersect);
+
+                    if(dist < shortDist)
+                    {
+                        ret = Vec2(intersect);
+                        shortDist = dist;
+                    }
+
                 }
-                if(diff.y > 0) // moved up
+                if(diff.y >= 0) // moved up
                 {
 
                 }
                 if(diff.y < 0) // moved down
                 {
-                    // As suggested, i need to test the topmost intersection
-                    // the AA bounding box has with the tile.
-                    auto tile = _metaLayer->getTileAt(tilePos);
-/*
-                    float tileY = tile->getBoundingBox().getMaxY();
-                    float minY = preBB.origin.y;
+                    // get the top of the tile edge.
+                    Rect tileBB = tile->getBoundingBox();
+                    
+                    Vec2 tileTL = Vec2(
+                        tileBB.getMinX() - _collider.size.width * 0.5f,
+                        tileBB.getMaxY() + _collider.size.height * 0.5f
+                        );
+                    Vec2 tileTR = Vec2(
+                        tileBB.getMaxX() + _collider.size.width * 0.5f,
+                        tileBB.getMaxY() + _collider.size.height * 0.5f
+                        );
+                    
+                    
+                    Vec2 intersect = Vec2::getIntersectPoint(
+                        curPos, prePos, tileTL, tileTR);
 
-                    if(minY < tileY)
-*/
-                    // TODO: Collision
-                    //if(preBB.intersectsRect(tile->getBoundingBox()))
-                    //{
-                    //    
-                    //    ret = Vec2(
-                    //        ret.x,
-                    //        tile->getBoundingBox().getMaxY()
-                    //        + _collider.size.height * 0.5f
-                    //        );
-                    //    _airborn = false; // grounded
-                    //    _velocity = Vec2(_velocity.x, 0);
-                    //}
+                    if(intersect != Vec2::ZERO)
+                    { // test to see if the intersection occurred
+                        float dist = curPos.distance(intersect);
+
+                        if(dist < shortDist)
+                        {
+                            ret = Vec2(intersect);
+                            shortDist = dist;
+                        }
+
+                        _airborn = false;
+                    }
+
                 }
             }
         }
@@ -293,6 +338,7 @@ const Vec2& PhysObj::tileCollision(const Vec2& position)
 
     return ret;
 }
+
 
 
 /* Determines of a tile (gid) is collidable or not. */
@@ -347,5 +393,7 @@ const Vec2& PhysObj::toTileCoord(const Vec2& point)
 void PhysObj::moveLeft() { _velocity.x = -2.f; }
 void PhysObj::moveRight() { _velocity.x = 2.f; }
 void PhysObj::stop() { _velocity.x = 0.f; }
+
+void PhysObj::jump() { _velocity.y = 3.f; _airborn = true; }
 
 void PhysObj::setVelocity(const Vec2& velocity) { _velocity = velocity; }
